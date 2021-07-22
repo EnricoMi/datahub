@@ -40,6 +40,7 @@ project.ext.externalDependency = [
     'commonsLang': 'commons-lang:commons-lang:2.6',
     'commonsCollections': 'commons-collections:commons-collections:3.2.2',
     'data' : 'com.linkedin.pegasus:data:' + pegasusVersion,
+    'dgraph4j' : 'io.dgraph:dgraph4j:21.03.1',
     'ebean': 'io.ebean:ebean:11.33.3',
     'ebeanAgent': 'io.ebean:ebean-agent:11.27.1',
     'elasticSearchRest': 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.9.3',
