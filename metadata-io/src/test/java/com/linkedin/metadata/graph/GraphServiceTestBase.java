@@ -11,15 +11,13 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.linkedin.metadata.dao.utils.QueryUtils.EMPTY_FILTER;
 import static com.linkedin.metadata.dao.utils.QueryUtils.newFilter;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.*;
 
 
 /**
@@ -39,18 +37,18 @@ import static org.testng.Assert.assertNotNull;
 abstract public class GraphServiceTestBase {
 
   /**
-   * Some test dataset types.
+   * Some test URN types.
    */
   protected static String datasetType = "dataset";
-  protected static String datasetVersionType = "datasetVersion";
+  protected static String userType = "user";
 
   /**
    * Some test datasets.
    */
   protected static String datasetOneUrnString = "urn:li:" + datasetType + ":(urn:li:dataPlatform:type,SampleDatasetOne,PROD)";
   protected static String datasetTwoUrnString = "urn:li:" + datasetType + ":(urn:li:dataPlatform:type,SampleDatasetTwo,PROD)";
-  protected static String datasetThreeUrnString = "urn:li:" + datasetVersionType + ":(urn:li:dataPlatform:type,SampleVersionedDataset,PROD,V1)";
-  protected static String datasetFourUrnString = "urn:li:" + datasetVersionType + ":(urn:li:dataPlatform:type,SampleVersionedDataset,PROD,V2)";
+  protected static String datasetThreeUrnString = "urn:li:" + datasetType + ":(urn:li:dataPlatform:type,SampleDatasetThree,PROD)";
+  protected static String datasetFourUrnString = "urn:li:" + datasetType + ":(urn:li:dataPlatform:type,SampleDatasetFour,PROD)";
 
   protected static Urn datasetOneUrn = createFromString(datasetOneUrnString);
   protected static Urn datasetTwoUrn = createFromString(datasetTwoUrnString);
@@ -58,10 +56,20 @@ abstract public class GraphServiceTestBase {
   protected static Urn datasetFourUrn = createFromString(datasetFourUrnString);
 
   /**
+   * Some dataset owners.
+   */
+  protected static String userOneUrnString = "urn:li:" + userType + ":(urn:li:user:system,Ingress,PROD)";
+  protected static String userTwoUrnString = "urn:li:" + userType + ":(urn:li:user:individual,UserA,DEV)";
+
+  protected static Urn userOneUrn = createFromString(userOneUrnString);
+  protected static Urn userTwoUrn = createFromString(userTwoUrnString);
+
+  /**
    * Some test relationships.
    */
-  protected static String upstreamOf = "UpstreamOf";
-  protected static String nextVersionOf = "NextVersionOf";
+  protected static String downstreamOf = "DownstreamOf";
+  protected static String hasOwner = "hasOwner";
+  protected static Set<String> allRelationshipTypes = new HashSet<>(Arrays.asList(downstreamOf, hasOwner));
 
   /**
    * Some relationship filters.
@@ -81,6 +89,9 @@ abstract public class GraphServiceTestBase {
     assertNotNull(datasetTwoUrn);
     assertNotNull(datasetThreeUrn);
     assertNotNull(datasetFourUrn);
+
+    assertNotNull(userOneUrn);
+    assertNotNull(userTwoUrn);
   }
 
   /**
@@ -112,10 +123,14 @@ abstract public class GraphServiceTestBase {
     GraphService service = getGraphService();
 
     List<Edge> edges = Arrays.asList(
-            new Edge(datasetOneUrn, datasetTwoUrn, upstreamOf),
-            new Edge(datasetTwoUrn, datasetThreeUrn, upstreamOf),
-            new Edge(datasetTwoUrn, datasetFourUrn, upstreamOf),
-            new Edge(datasetFourUrn, datasetThreeUrn, nextVersionOf)
+            new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf),
+            new Edge(datasetThreeUrn, datasetTwoUrn, downstreamOf),
+            new Edge(datasetFourUrn, datasetTwoUrn, downstreamOf),
+
+            new Edge(datasetOneUrn, userOneUrn, hasOwner),
+            new Edge(datasetTwoUrn, userOneUrn, hasOwner),
+            new Edge(datasetThreeUrn, userTwoUrn, hasOwner),
+            new Edge(datasetFourUrn, userTwoUrn, hasOwner)
     );
 
     edges.forEach(service::addEdge);
@@ -155,29 +170,72 @@ abstract public class GraphServiceTestBase {
     return new Object[][] {
             new Object[] {
                     newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(downstreamOf),
                     outgoingRelationships,
-                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
-            },
-            new Object[] {
-                    newFilter("urn", datasetTwoUrnString),
-                    incomingRelationships,
                     Arrays.asList(datasetOneUrnString)
             },
             new Object[] {
                     newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[] {
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(downstreamOf),
                     undirectedRelationships,
                     Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+
+            new Object[] {
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(hasOwner),
+                    outgoingRelationships,
+                    Arrays.asList(userOneUrnString)
+            },
+            new Object[] {
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(hasOwner),
+                    incomingRelationships,
+                    Arrays.asList()
+            },
+            new Object[] {
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(hasOwner),
+                    undirectedRelationships,
+                    Arrays.asList(userOneUrnString)
+            },
+
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(hasOwner),
+                    outgoingRelationships,
+                    Arrays.asList()
+            },
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(hasOwner),
+                    incomingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString)
+            },
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(hasOwner),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString)
             }
     };
   }
 
   @Test(dataProvider="FindRelatedUrnsSourceEntityFilterTests")
   public void testFindRelatedUrnsSourceEntityFilter(Filter sourceEntityFilter,
+                                                    List<String> relationshipTypes,
                                                     RelationshipFilter relationships,
                                                     List<String> expectedUrnStrings) throws Exception {
     doTestFindRelatedUrns(
             sourceEntityFilter,
             EMPTY_FILTER,
+            relationshipTypes,
             relationships,
             expectedUrnStrings.toArray(new String[0])
     );
@@ -187,45 +245,75 @@ abstract public class GraphServiceTestBase {
   public Object[][] getFindRelatedUrnsDestinationEntityFilterTests() {
     return new Object[][] {
             new Object[] {
-                    newFilter("urn", datasetOneUrnString),
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(downstreamOf),
+                    outgoingRelationships,
+                    Arrays.asList(datasetTwoUrnString)
+            },
+            new Object[] {
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList(datasetTwoUrnString)
+            },
+            new Object[] {
+                    newFilter("urn", datasetTwoUrnString),
+                    Arrays.asList(downstreamOf),
+                    undirectedRelationships,
+                    Arrays.asList(datasetTwoUrnString)
+            },
+
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(downstreamOf),
                     outgoingRelationships,
                     Arrays.asList()
             },
             new Object[] {
-                    newFilter("urn", datasetOneUrnString),
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(downstreamOf),
                     incomingRelationships,
-                    Arrays.asList(datasetOneUrnString)
+                    Arrays.asList()
             },
             new Object[] {
-                    newFilter("urn", datasetOneUrnString),
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(downstreamOf),
                     undirectedRelationships,
-                    Arrays.asList(datasetOneUrnString)
+                    Arrays.asList()
+            },
+
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(hasOwner),
+                    outgoingRelationships,
+                    Arrays.asList(userOneUrnString)
+            },
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(hasOwner),
+                    incomingRelationships,
+                    Arrays.asList()
+            },
+            new Object[] {
+                    newFilter("urn", userOneUrnString),
+                    Arrays.asList(hasOwner),
+                    undirectedRelationships,
+                    Arrays.asList(userOneUrnString)
             }
     };
   }
 
   @Test(dataProvider="FindRelatedUrnsDestinationEntityFilterTests")
   public void testFindRelatedUrnsDestinationEntityFilter(Filter destinationEntityFilter,
+                                                         List<String> relationshipTypes,
                                                          RelationshipFilter relationships,
                                                          List<String> expectedUrnStrings) throws Exception {
     doTestFindRelatedUrns(
             EMPTY_FILTER,
             destinationEntityFilter,
+            relationshipTypes,
             relationships,
             expectedUrnStrings.toArray(new String[0])
-    );
-  }
-
-  private void doTestFindRelatedUrns(
-          Filter sourceEntityFilter,
-          Filter destinationEntityFilter,
-          RelationshipFilter relationshipFilter,
-          String... expectedUrnStrings
-  ) throws Exception {
-    doTestFindRelatedUrns(
-            sourceEntityFilter, destinationEntityFilter,
-            Arrays.asList(upstreamOf), relationshipFilter,
-            expectedUrnStrings
     );
   }
 
@@ -251,24 +339,74 @@ abstract public class GraphServiceTestBase {
   @DataProvider(name="FindRelatedUrnsSourceTypeTests")
   public Object[][] getFindRelatedUrnsSourceTypeTests() {
     return new Object[][]{
-            new Object[]{datasetType, outgoingRelationships, Arrays.asList(datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)},
-            new Object[]{datasetVersionType, outgoingRelationships, Arrays.asList()},
+            new Object[]{
+                    datasetType,
+                    Arrays.asList(downstreamOf),
+                    outgoingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString)
+            },
+            new Object[]{
+                    datasetType,
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList(datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[]{
+                    datasetType,
+                    Arrays.asList(downstreamOf),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
 
-            new Object[]{datasetType, incomingRelationships, Arrays.asList(datasetOneUrnString, datasetTwoUrnString)},
-            new Object[]{datasetVersionType, incomingRelationships, Arrays.asList(datasetTwoUrnString)},
+            new Object[]{
+                    userType,
+                    Arrays.asList(downstreamOf),
+                    outgoingRelationships,
+                    Arrays.asList()
+            },
+            new Object[]{
+                    userType,
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList()
+            },
+            new Object[]{
+                    userType,
+                    Arrays.asList(downstreamOf),
+                    undirectedRelationships,
+                    Arrays.asList()
+            },
 
-            new Object[]{datasetType, undirectedRelationships, Arrays.asList(datasetOneUrnString, datasetTwoUrnString)},
-            new Object[]{datasetVersionType, undirectedRelationships, Arrays.asList(datasetThreeUrnString, datasetFourUrnString)}
+            new Object[]{
+                    userType,
+                    Arrays.asList(hasOwner),
+                    outgoingRelationships,
+                    Arrays.asList()
+            },
+            new Object[]{
+                    userType,
+                    Arrays.asList(hasOwner),
+                    incomingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[]{
+                    userType,
+                    Arrays.asList(hasOwner),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            }
     };
   }
 
   @Test(dataProvider="FindRelatedUrnsSourceTypeTests")
   public void testFindRelatedUrnsSourceType(String datasetType,
+                                            List<String> relationshipTypes,
                                             RelationshipFilter relationships,
                                             List<String> expectedUrnStrings) throws Exception {
     doTestFindRelatedUrns(
             datasetType,
             anyType,
+            relationshipTypes,
             relationships,
             expectedUrnStrings.toArray(new String[0])
     );
@@ -277,24 +415,74 @@ abstract public class GraphServiceTestBase {
   @DataProvider(name="FindRelatedUrnsDestinationTypeTests")
   public Object[][] getFindRelatedUrnsDestinationTypeTests() {
     return new Object[][] {
-            new Object[] { datasetType, outgoingRelationships, Arrays.asList(datasetTwoUrnString) },
-            new Object[] { datasetVersionType, outgoingRelationships, Arrays.asList(datasetThreeUrnString, datasetFourUrnString) },
+            new Object[] {
+                    datasetType,
+                    Arrays.asList(downstreamOf),
+                    outgoingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString)
+            },
+            new Object[] {
+                    datasetType,
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList(datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[] {
+                    datasetType,
+                    Arrays.asList(downstreamOf),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
 
-            new Object[] { datasetType, incomingRelationships, Arrays.asList(datasetOneUrnString, datasetTwoUrnString) },
-            new Object[] { datasetVersionType, incomingRelationships, Arrays.asList() },
+            new Object[] {
+                    datasetType,
+                    Arrays.asList(hasOwner),
+                    outgoingRelationships,
+                    Arrays.asList()
+            },
+            new Object[] {
+                    datasetType,
+                    Arrays.asList(hasOwner),
+                    incomingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[] {
+                    datasetType,
+                    Arrays.asList(hasOwner),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
 
-            new Object[] { datasetType, undirectedRelationships, Arrays.asList(datasetOneUrnString, datasetTwoUrnString) },
-            new Object[] { datasetVersionType, undirectedRelationships, Arrays.asList(datasetThreeUrnString, datasetFourUrnString) }
+            new Object[] {
+                    userType,
+                    Arrays.asList(hasOwner),
+                    outgoingRelationships,
+                    Arrays.asList(userOneUrnString, userTwoUrnString)
+            },
+            new Object[] {
+                    userType,
+                    Arrays.asList(hasOwner),
+                    incomingRelationships,
+                    Arrays.asList()
+            },
+            new Object[] {
+                    userType,
+                    Arrays.asList(hasOwner),
+                    undirectedRelationships,
+                    Arrays.asList(userOneUrnString, userTwoUrnString)
+            }
     };
   }
 
   @Test(dataProvider="FindRelatedUrnsDestinationTypeTests")
   public void testFindRelatedUrnsDestinationType(String datasetType,
+                                                 List<String> relationshipTypes,
                                                  RelationshipFilter relationships,
                                                  List<String> expectedUrnStrings) throws Exception {
     doTestFindRelatedUrns(
             anyType,
             datasetType,
+            relationshipTypes,
             relationships,
             expectedUrnStrings.toArray(new String[0])
     );
@@ -303,6 +491,7 @@ abstract public class GraphServiceTestBase {
   private void doTestFindRelatedUrns(
           final String sourceType,
           final String destinationType,
+          final List<String> relationshipTypes,
           final RelationshipFilter relationshipFilter,
           String... expectedUrnStrings
   ) throws Exception {
@@ -311,7 +500,7 @@ abstract public class GraphServiceTestBase {
     List<String> relatedUrns = service.findRelatedUrns(
             sourceType, EMPTY_FILTER,
             destinationType, EMPTY_FILTER,
-            Arrays.asList(upstreamOf), relationshipFilter,
+            relationshipTypes, relationshipFilter,
             0, 10
     );
 
@@ -322,26 +511,38 @@ abstract public class GraphServiceTestBase {
   public void testFindRelatedUrnsOffsetAndCount() throws Exception {
     GraphService service = getPopulatedGraphService();
 
-    List<String> firstRelatedUrn = service.findRelatedUrns(
-            anyType, newFilter("urn", datasetTwoUrnString),
+    List<String> allRelatedUrn = service.findRelatedUrns(
+            datasetType, EMPTY_FILTER,
             anyType, EMPTY_FILTER,
-            Arrays.asList(upstreamOf), outgoingRelationships,
-            0, 1
+            Arrays.asList(downstreamOf), outgoingRelationships,
+            0, 10
     );
 
-    Assert.assertEquals(firstRelatedUrn.size(), 1);
-    Assert.assertTrue(firstRelatedUrn.contains(datasetThreeUrnString) || firstRelatedUrn.contains(datasetFourUrnString));
+    Assert.assertEquals(allRelatedUrn.size(), 3);
+    assertEqualsNoOrder(allRelatedUrn, Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString));
 
-    List<String> secondRelatedUrn = service.findRelatedUrns(
-            anyType, newFilter("urn", datasetTwoUrnString),
+    List<String> firstHalfRelatedUrn = service.findRelatedUrns(
+            datasetType, EMPTY_FILTER,
             anyType, EMPTY_FILTER,
-            Arrays.asList(upstreamOf), outgoingRelationships,
-            1, 1
+            Arrays.asList(downstreamOf), outgoingRelationships,
+            0, 2
     );
 
-    Assert.assertEquals(secondRelatedUrn.size(), 1);
-    Assert.assertTrue(secondRelatedUrn.contains(datasetThreeUrnString) || secondRelatedUrn.contains(datasetFourUrnString));
-    Assert.assertNotEquals(firstRelatedUrn.get(0), secondRelatedUrn.get(0));
+    Assert.assertEquals(firstHalfRelatedUrn.size(), 2);
+
+    List<String> secondHalfRelatedUrn = service.findRelatedUrns(
+            anyType, newFilter("urn", datasetTwoUrnString),
+            anyType, EMPTY_FILTER,
+            Arrays.asList(downstreamOf), outgoingRelationships,
+            2, 2
+    );
+
+    Assert.assertEquals(firstHalfRelatedUrn.size(), 1);
+    Assert.assertFalse(firstHalfRelatedUrn.contains(secondHalfRelatedUrn.get(0)));
+    assertEqualsNoOrder(
+            Stream.concat(firstHalfRelatedUrn.stream(), secondHalfRelatedUrn.stream()).collect(Collectors.toList()),
+            allRelatedUrn
+    );
   }
 
   @DataProvider(name="RemoveEdgesFromNodeTests")
@@ -349,18 +550,21 @@ abstract public class GraphServiceTestBase {
     return new Object[][] {
             new Object[] {
                     datasetTwoUrn,
+                    Arrays.asList(downstreamOf),
                     outgoingRelationships,
                     Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
                     Arrays.asList(datasetOneUrnString)
             },
             new Object[] {
                     datasetTwoUrn,
+                    Arrays.asList(downstreamOf),
                     incomingRelationships,
                     Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
                     Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
             },
             new Object[] {
                     datasetTwoUrn,
+                    Arrays.asList(downstreamOf),
                     undirectedRelationships,
                     Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
                     Arrays.asList()
@@ -370,22 +574,34 @@ abstract public class GraphServiceTestBase {
 
   @Test(dataProvider="RemoveEdgesFromNodeTests")
   public void testRemoveEdgesFromNode(@Nonnull Urn nodeToRemoveFrom,
+                                      @Nonnull List<String> relationTypes,
                                       @Nonnull RelationshipFilter relationshipFilter,
                                       List<String> expectedRelatedUrnsBeforeRemove,
                                       List<String> expectedRelatedUrnsAfterRemove) throws Exception {
     GraphService service = getPopulatedGraphService();
-    List<String> edgeTypes = Arrays.asList(upstreamOf);
+
+    List<String> allOtherRelationTypes =
+            allRelationshipTypes.stream()
+                    .filter(relation -> !relationTypes.contains(relation))
+                    .collect(Collectors.toList());
+    assertTrue(allOtherRelationTypes.size() > 0);
 
     List<String> actualRelatedUrnsBeforeRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
-            edgeTypes, undirectedRelationships,
+            relationTypes, undirectedRelationships,
             0, 10);
     assertEqualsNoOrder(actualRelatedUrnsBeforeRemove, expectedRelatedUrnsBeforeRemove);
+    List<String> relatedUrnsOfOtherRelationTypesBeforeRemove = service.findRelatedUrns(
+            anyType, newFilter("urn", nodeToRemoveFrom.toString()),
+            anyType, EMPTY_FILTER,
+            allOtherRelationTypes, undirectedRelationships,
+            0, 10);
+    assertTrue(relatedUrnsOfOtherRelationTypesBeforeRemove.size() > 0);
 
     service.removeEdgesFromNode(
             nodeToRemoveFrom,
-            edgeTypes,
+            relationTypes,
             relationshipFilter
     );
     syncAfterWrite();
@@ -393,9 +609,15 @@ abstract public class GraphServiceTestBase {
     List<String> actualRelatedUrnsAfterRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
-            edgeTypes, undirectedRelationships,
+            relationTypes, undirectedRelationships,
             0, 10);
     assertEqualsNoOrder(actualRelatedUrnsAfterRemove, expectedRelatedUrnsAfterRemove);
+    List<String> relatedUrnsOfOtherRelationTypesAfterRemove = service.findRelatedUrns(
+            anyType, newFilter("urn", nodeToRemoveFrom.toString()),
+            anyType, EMPTY_FILTER,
+            allOtherRelationTypes, undirectedRelationships,
+            0, 10);
+    assertEqualsNoOrder(actualRelatedUrnsAfterRemove, actualRelatedUrnsBeforeRemove);
   }
 
   @Test
@@ -407,19 +629,19 @@ abstract public class GraphServiceTestBase {
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(upstreamOf), undirectedRelationships,
+                    Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
             ),
             Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
     );
     assertEqualsNoOrder(
             service.findRelatedUrns(
-                    datasetVersionType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(nextVersionOf), undirectedRelationships,
+                    Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
             ),
-            Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
+            Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
     );
 
     service.removeNode(datasetTwoUrn);
@@ -430,19 +652,19 @@ abstract public class GraphServiceTestBase {
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(upstreamOf), undirectedRelationships,
+                    Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
             ),
-            Collections.emptyList()
+            Arrays.asList(datasetOneUrnString)
     );
     assertEqualsNoOrder(
             service.findRelatedUrns(
-                    datasetVersionType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(nextVersionOf), undirectedRelationships,
+                    Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
             ),
-            Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
+            Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString)
     );
   }
 
@@ -455,19 +677,19 @@ abstract public class GraphServiceTestBase {
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(upstreamOf), undirectedRelationships,
+                    Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
             ),
             Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
     );
     assertEqualsNoOrder(
             service.findRelatedUrns(
-                    datasetVersionType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(nextVersionOf), undirectedRelationships,
+                    Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
             ),
-            Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
+            Arrays.asList(userOneUrnString, userTwoUrnString)
     );
 
     service.clear();
@@ -478,16 +700,16 @@ abstract public class GraphServiceTestBase {
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(upstreamOf), undirectedRelationships,
+                    Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
             ),
             Collections.emptyList()
     );
     assertEqualsNoOrder(
             service.findRelatedUrns(
-                    datasetVersionType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
-                    Arrays.asList(nextVersionOf), undirectedRelationships,
+                    Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
             ),
             Arrays.asList()
