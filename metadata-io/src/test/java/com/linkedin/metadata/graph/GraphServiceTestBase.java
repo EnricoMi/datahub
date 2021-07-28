@@ -11,15 +11,20 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import static com.linkedin.metadata.dao.utils.QueryUtils.EMPTY_FILTER;
 import static com.linkedin.metadata.dao.utils.QueryUtils.newFilter;
-import static org.testng.Assert.*;
-
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertEqualsNoOrder;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Base class for testing any GraphService implementation.
@@ -165,7 +170,7 @@ abstract public class GraphServiceTestBase {
     assertEquals(new HashSet<>(actual), new HashSet<>(expected));
   }
 
-  @DataProvider(name="FindRelatedUrnsSourceEntityFilterTests")
+  @DataProvider(name = "FindRelatedUrnsSourceEntityFilterTests")
   public Object[][] getFindRelatedUrnsSourceEntityFilterTests() {
     return new Object[][] {
             new Object[] {
@@ -227,7 +232,7 @@ abstract public class GraphServiceTestBase {
     };
   }
 
-  @Test(dataProvider="FindRelatedUrnsSourceEntityFilterTests")
+  @Test(dataProvider = "FindRelatedUrnsSourceEntityFilterTests")
   public void testFindRelatedUrnsSourceEntityFilter(Filter sourceEntityFilter,
                                                     List<String> relationshipTypes,
                                                     RelationshipFilter relationships,
@@ -241,7 +246,7 @@ abstract public class GraphServiceTestBase {
     );
   }
 
-  @DataProvider(name="FindRelatedUrnsDestinationEntityFilterTests")
+  @DataProvider(name = "FindRelatedUrnsDestinationEntityFilterTests")
   public Object[][] getFindRelatedUrnsDestinationEntityFilterTests() {
     return new Object[][] {
             new Object[] {
@@ -303,7 +308,7 @@ abstract public class GraphServiceTestBase {
     };
   }
 
-  @Test(dataProvider="FindRelatedUrnsDestinationEntityFilterTests")
+  @Test(dataProvider = "FindRelatedUrnsDestinationEntityFilterTests")
   public void testFindRelatedUrnsDestinationEntityFilter(Filter destinationEntityFilter,
                                                          List<String> relationshipTypes,
                                                          RelationshipFilter relationships,
@@ -336,7 +341,7 @@ abstract public class GraphServiceTestBase {
     assertEqualsAsSets(relatedUrns, Arrays.asList(expectedUrnStrings));
   }
 
-  @DataProvider(name="FindRelatedUrnsSourceTypeTests")
+  @DataProvider(name = "FindRelatedUrnsSourceTypeTests")
   public Object[][] getFindRelatedUrnsSourceTypeTests() {
     return new Object[][]{
             new Object[]{
@@ -398,7 +403,7 @@ abstract public class GraphServiceTestBase {
     };
   }
 
-  @Test(dataProvider="FindRelatedUrnsSourceTypeTests")
+  @Test(dataProvider = "FindRelatedUrnsSourceTypeTests")
   public void testFindRelatedUrnsSourceType(String datasetType,
                                             List<String> relationshipTypes,
                                             RelationshipFilter relationships,
@@ -412,7 +417,7 @@ abstract public class GraphServiceTestBase {
     );
   }
 
-  @DataProvider(name="FindRelatedUrnsDestinationTypeTests")
+  @DataProvider(name = "FindRelatedUrnsDestinationTypeTests")
   public Object[][] getFindRelatedUrnsDestinationTypeTests() {
     return new Object[][] {
             new Object[] {
@@ -474,7 +479,7 @@ abstract public class GraphServiceTestBase {
     };
   }
 
-  @Test(dataProvider="FindRelatedUrnsDestinationTypeTests")
+  @Test(dataProvider = "FindRelatedUrnsDestinationTypeTests")
   public void testFindRelatedUrnsDestinationType(String datasetType,
                                                  List<String> relationshipTypes,
                                                  RelationshipFilter relationships,
@@ -533,7 +538,7 @@ abstract public class GraphServiceTestBase {
     Assert.assertEquals(individualRelatedUrn, allRelatedUrn);
   }
 
-  @DataProvider(name="RemoveEdgesFromNodeTests")
+  @DataProvider(name = "RemoveEdgesFromNodeTests")
   public Object[][] getRemoveEdgesFromNodeTests() {
     return new Object[][] {
             new Object[] {
@@ -560,7 +565,7 @@ abstract public class GraphServiceTestBase {
     };
   }
 
-  @Test(dataProvider="RemoveEdgesFromNodeTests")
+  @Test(dataProvider = "RemoveEdgesFromNodeTests")
   public void testRemoveEdgesFromNode(@Nonnull Urn nodeToRemoveFrom,
                                       @Nonnull List<String> relationTypes,
                                       @Nonnull RelationshipFilter relationshipFilter,
