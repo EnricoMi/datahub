@@ -13,6 +13,7 @@ import javax.annotation.Nullable;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.linkedin.metadata.dao.utils.QueryUtils.EMPTY_FILTER;
@@ -159,9 +160,8 @@ abstract public class GraphServiceTestBase {
     }
   }
 
-  protected static <T> void assertEqualsNoOrder(List<T> actual, List<T> expected) {
+  protected static <T> void assertEqualsAsSets(List<T> actual, List<T> expected) {
     // TODO: there should be no duplicates
-    //Assert.assertEqualsNoOrder(actual.toArray(), expected.toArray());
     assertEquals(new HashSet<>(actual), new HashSet<>(expected));
   }
 
@@ -333,7 +333,7 @@ abstract public class GraphServiceTestBase {
             0, 10
     );
 
-    assertEqualsNoOrder(relatedUrns, Arrays.asList(expectedUrnStrings));
+    assertEqualsAsSets(relatedUrns, Arrays.asList(expectedUrnStrings));
   }
 
   @DataProvider(name="FindRelatedUrnsSourceTypeTests")
@@ -504,7 +504,7 @@ abstract public class GraphServiceTestBase {
             0, 10
     );
 
-    assertEqualsNoOrder(relatedUrns, Arrays.asList(expectedUrnStrings));
+    assertEqualsAsSets(relatedUrns, Arrays.asList(expectedUrnStrings));
   }
 
   @Test
@@ -515,34 +515,22 @@ abstract public class GraphServiceTestBase {
             datasetType, EMPTY_FILTER,
             anyType, EMPTY_FILTER,
             Arrays.asList(downstreamOf), outgoingRelationships,
-            0, 10
+            0, 100
     );
 
-    Assert.assertEquals(allRelatedUrn.size(), 3);
-    assertEqualsNoOrder(allRelatedUrn, Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString));
+    assertEqualsAsSets(allRelatedUrn, Arrays.asList(datasetOneUrnString, datasetTwoUrnString));
 
-    List<String> firstHalfRelatedUrn = service.findRelatedUrns(
-            datasetType, EMPTY_FILTER,
-            anyType, EMPTY_FILTER,
-            Arrays.asList(downstreamOf), outgoingRelationships,
-            0, 2
-    );
-
-    Assert.assertEquals(firstHalfRelatedUrn.size(), 2);
-
-    List<String> secondHalfRelatedUrn = service.findRelatedUrns(
-            anyType, newFilter("urn", datasetTwoUrnString),
-            anyType, EMPTY_FILTER,
-            Arrays.asList(downstreamOf), outgoingRelationships,
-            2, 2
-    );
-
-    Assert.assertEquals(firstHalfRelatedUrn.size(), 1);
-    Assert.assertFalse(firstHalfRelatedUrn.contains(secondHalfRelatedUrn.get(0)));
-    assertEqualsNoOrder(
-            Stream.concat(firstHalfRelatedUrn.stream(), secondHalfRelatedUrn.stream()).collect(Collectors.toList()),
-            allRelatedUrn
-    );
+    List<String> individualRelatedUrn = new ArrayList<>();
+    IntStream.range(0, allRelatedUrn.size())
+            .forEach(idx -> individualRelatedUrn.addAll(
+                    service.findRelatedUrns(
+                    datasetType, EMPTY_FILTER,
+                    anyType, EMPTY_FILTER,
+                    Arrays.asList(downstreamOf), outgoingRelationships,
+                    idx, 1
+                )
+            ));
+    Assert.assertEquals(individualRelatedUrn, allRelatedUrn);
   }
 
   @DataProvider(name="RemoveEdgesFromNodeTests")
@@ -553,14 +541,14 @@ abstract public class GraphServiceTestBase {
                     Arrays.asList(downstreamOf),
                     outgoingRelationships,
                     Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
-                    Arrays.asList(datasetOneUrnString)
+                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
             },
             new Object[] {
                     datasetTwoUrn,
                     Arrays.asList(downstreamOf),
                     incomingRelationships,
                     Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
-                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
+                    Arrays.asList(datasetOneUrnString)
             },
             new Object[] {
                     datasetTwoUrn,
@@ -591,7 +579,7 @@ abstract public class GraphServiceTestBase {
             anyType, EMPTY_FILTER,
             relationTypes, undirectedRelationships,
             0, 10);
-    assertEqualsNoOrder(actualRelatedUrnsBeforeRemove, expectedRelatedUrnsBeforeRemove);
+    assertEqualsAsSets(actualRelatedUrnsBeforeRemove, expectedRelatedUrnsBeforeRemove);
     List<String> relatedUrnsOfOtherRelationTypesBeforeRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
@@ -611,13 +599,13 @@ abstract public class GraphServiceTestBase {
             anyType, EMPTY_FILTER,
             relationTypes, undirectedRelationships,
             0, 10);
-    assertEqualsNoOrder(actualRelatedUrnsAfterRemove, expectedRelatedUrnsAfterRemove);
+    assertEqualsAsSets(actualRelatedUrnsAfterRemove, expectedRelatedUrnsAfterRemove);
     List<String> relatedUrnsOfOtherRelationTypesAfterRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
             allOtherRelationTypes, undirectedRelationships,
             0, 10);
-    assertEqualsNoOrder(actualRelatedUrnsAfterRemove, actualRelatedUrnsBeforeRemove);
+    assertEqualsAsSets(actualRelatedUrnsAfterRemove, actualRelatedUrnsBeforeRemove);
   }
 
   @Test
@@ -625,7 +613,7 @@ abstract public class GraphServiceTestBase {
     GraphService service = getPopulatedGraphService();
 
     // assert the initial graph: check all nodes related to upstreamOf and nextVersionOf edges
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
@@ -634,7 +622,7 @@ abstract public class GraphServiceTestBase {
             ),
             Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
     );
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
                     userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
@@ -648,7 +636,7 @@ abstract public class GraphServiceTestBase {
     syncAfterWrite();
 
     // assert the modified graph: check all nodes related to upstreamOf and nextVersionOf edges again
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
@@ -657,7 +645,7 @@ abstract public class GraphServiceTestBase {
             ),
             Arrays.asList(datasetOneUrnString)
     );
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
                     userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
@@ -679,8 +667,8 @@ abstract public class GraphServiceTestBase {
                     anyType, EMPTY_FILTER,
                     Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
-            ),
-            Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            ).toArray(),
+            Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString).toArray()
     );
     assertEqualsNoOrder(
             service.findRelatedUrns(
@@ -688,8 +676,8 @@ abstract public class GraphServiceTestBase {
                     anyType, EMPTY_FILTER,
                     Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
-            ),
-            Arrays.asList(userOneUrnString, userTwoUrnString)
+            ).toArray(),
+            Arrays.asList(userOneUrnString, userTwoUrnString).toArray()
     );
 
     service.clear();
@@ -702,8 +690,8 @@ abstract public class GraphServiceTestBase {
                     anyType, EMPTY_FILTER,
                     Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
-            ),
-            Collections.emptyList()
+            ).toArray(),
+            new Object[0]
     );
     assertEqualsNoOrder(
             service.findRelatedUrns(
@@ -711,8 +699,8 @@ abstract public class GraphServiceTestBase {
                     anyType, EMPTY_FILTER,
                     Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
-            ),
-            Arrays.asList()
+            ).toArray(),
+            new Object[0]
     );
   }
 
