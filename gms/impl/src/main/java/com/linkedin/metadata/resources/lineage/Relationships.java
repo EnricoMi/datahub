@@ -26,8 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.linkedin.metadata.dao.Neo4jUtil.*;
 import static com.linkedin.metadata.dao.utils.QueryUtils.newFilter;
+import static com.linkedin.metadata.dao.utils.QueryUtils.newRelationshipFilter;
 
 
 /**
@@ -51,7 +51,7 @@ public final class Relationships extends SimpleResourceTemplate<EntityRelationsh
         return
                 _graphService.findRelatedUrns("", newFilter("urn", rawUrn),
                         "", EMPTY_FILTER,
-                        relationshipTypes, createRelationshipFilter(EMPTY_FILTER, direction),
+                        relationshipTypes, newRelationshipFilter(EMPTY_FILTER, direction),
                         0, MAX_DOWNSTREAM_CNT)
                 .stream().map(
                         rawRelatedUrn -> {

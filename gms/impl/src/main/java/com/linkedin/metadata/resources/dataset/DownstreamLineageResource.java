@@ -33,7 +33,6 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import static com.linkedin.metadata.dao.Neo4jUtil.*;
 import static com.linkedin.metadata.dao.utils.QueryUtils.*;
 
 
@@ -75,7 +74,7 @@ public final class DownstreamLineageResource extends SimpleResourceTemplate<Down
           "dataset",
           EMPTY_FILTER,
           ImmutableList.of("DownstreamOf"),
-          createRelationshipFilter(EMPTY_FILTER, RelationshipDirection.INCOMING),
+          newRelationshipFilter(EMPTY_FILTER, RelationshipDirection.INCOMING),
           0,
           MAX_DOWNSTREAM_CNT
       ).stream().map(urnStr -> {
