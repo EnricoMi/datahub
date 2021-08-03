@@ -81,8 +81,8 @@ abstract public class GraphServiceTestBase {
   /**
    * Some relationship filters.
    */
-  protected static RelationshipFilter incomingRelationships = createRelationshipFilter(RelationshipDirection.INCOMING);
   protected static RelationshipFilter outgoingRelationships = createRelationshipFilter(RelationshipDirection.OUTGOING);
+  protected static RelationshipFilter incomingRelationships = createRelationshipFilter(RelationshipDirection.INCOMING);
   protected static RelationshipFilter undirectedRelationships = createRelationshipFilter(RelationshipDirection.UNDIRECTED);
 
   /**
@@ -170,7 +170,6 @@ abstract public class GraphServiceTestBase {
   }
 
   protected static <T> void assertEqualsAsSets(List<T> actual, List<T> expected) {
-    // TODO: there should be no duplicates
     assertEquals(new HashSet<>(actual), new HashSet<>(expected));
   }
 
@@ -348,6 +347,25 @@ abstract public class GraphServiceTestBase {
   @DataProvider(name = "FindRelatedUrnsSourceTypeTests")
   public Object[][] getFindRelatedUrnsSourceTypeTests() {
     return new Object[][]{
+            new Object[] {
+                    null,
+                    Arrays.asList(downstreamOf),
+                    outgoingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString)
+            },
+            new Object[] {
+                    null,
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList(datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[] {
+                    null,
+                    Arrays.asList(downstreamOf),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+
             new Object[]{
                     datasetType,
                     Arrays.asList(downstreamOf),
@@ -424,6 +442,25 @@ abstract public class GraphServiceTestBase {
   @DataProvider(name = "FindRelatedUrnsDestinationTypeTests")
   public Object[][] getFindRelatedUrnsDestinationTypeTests() {
     return new Object[][] {
+            new Object[] {
+                    null,
+                    Arrays.asList(downstreamOf),
+                    outgoingRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString)
+            },
+            new Object[] {
+                    null,
+                    Arrays.asList(downstreamOf),
+                    incomingRelationships,
+                    Arrays.asList(datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+            new Object[] {
+                    null,
+                    Arrays.asList(downstreamOf),
+                    undirectedRelationships,
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
+            },
+
             new Object[] {
                     datasetType,
                     Arrays.asList(downstreamOf),
