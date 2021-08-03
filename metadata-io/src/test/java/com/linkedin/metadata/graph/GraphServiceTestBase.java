@@ -13,6 +13,7 @@ import javax.annotation.Nullable;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,7 +23,6 @@ import java.util.stream.IntStream;
 import static com.linkedin.metadata.dao.utils.QueryUtils.EMPTY_FILTER;
 import static com.linkedin.metadata.dao.utils.QueryUtils.newFilter;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertEqualsNoOrder;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
@@ -74,8 +74,9 @@ abstract public class GraphServiceTestBase {
    * Some test relationships.
    */
   protected static String downstreamOf = "DownstreamOf";
-  protected static String hasOwner = "hasOwner";
-  protected static Set<String> allRelationshipTypes = new HashSet<>(Arrays.asList(downstreamOf, hasOwner));
+  protected static String hasOwner = "HasOwner";
+  protected static String knowsUser = "KnowsUser";
+  protected static Set<String> allRelationshipTypes = new HashSet<>(Arrays.asList(downstreamOf, hasOwner, knowsUser));
 
   /**
    * Some relationship filters.
@@ -136,7 +137,10 @@ abstract public class GraphServiceTestBase {
             new Edge(datasetOneUrn, userOneUrn, hasOwner),
             new Edge(datasetTwoUrn, userOneUrn, hasOwner),
             new Edge(datasetThreeUrn, userTwoUrn, hasOwner),
-            new Edge(datasetFourUrn, userTwoUrn, hasOwner)
+            new Edge(datasetFourUrn, userTwoUrn, hasOwner),
+
+            new Edge(userOneUrn, userTwoUrn, knowsUser),
+            new Edge(userTwoUrn, userOneUrn, knowsUser)
     );
 
     edges.forEach(service::addEdge);
@@ -545,21 +549,55 @@ abstract public class GraphServiceTestBase {
                     datasetTwoUrn,
                     Arrays.asList(downstreamOf),
                     outgoingRelationships,
-                    Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
+                    Arrays.asList(datasetOneUrnString),
+                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString),
+                    Arrays.asList(),
                     Arrays.asList(datasetThreeUrnString, datasetFourUrnString)
             },
             new Object[] {
                     datasetTwoUrn,
                     Arrays.asList(downstreamOf),
                     incomingRelationships,
-                    Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
-                    Arrays.asList(datasetOneUrnString)
+                    Arrays.asList(datasetOneUrnString),
+                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString),
+                    Arrays.asList(datasetOneUrnString),
+                    Arrays.asList(),
             },
             new Object[] {
                     datasetTwoUrn,
                     Arrays.asList(downstreamOf),
                     undirectedRelationships,
-                    Arrays.asList(datasetOneUrnString, datasetThreeUrnString, datasetFourUrnString),
+                    Arrays.asList(datasetOneUrnString),
+                    Arrays.asList(datasetThreeUrnString, datasetFourUrnString),
+                    Arrays.asList(),
+                    Arrays.asList()
+            },
+
+            new Object[] {
+                    userOneUrn,
+                    Arrays.asList(hasOwner, knowsUser),
+                    outgoingRelationships,
+                    Arrays.asList(userTwoUrnString),
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, userTwoUrnString),
+                    Arrays.asList(),
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, userTwoUrnString)
+            },
+            new Object[] {
+                    userOneUrn,
+                    Arrays.asList(hasOwner, knowsUser),
+                    incomingRelationships,
+                    Arrays.asList(userTwoUrnString),
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, userTwoUrnString),
+                    Arrays.asList(userTwoUrnString),
+                    Arrays.asList()
+            },
+            new Object[] {
+                    userOneUrn,
+                    Arrays.asList(hasOwner, knowsUser),
+                    undirectedRelationships,
+                    Arrays.asList(userTwoUrnString),
+                    Arrays.asList(datasetOneUrnString, datasetTwoUrnString, userTwoUrnString),
+                    Arrays.asList(),
                     Arrays.asList()
             }
     };
@@ -569,8 +607,10 @@ abstract public class GraphServiceTestBase {
   public void testRemoveEdgesFromNode(@Nonnull Urn nodeToRemoveFrom,
                                       @Nonnull List<String> relationTypes,
                                       @Nonnull RelationshipFilter relationshipFilter,
-                                      List<String> expectedRelatedUrnsBeforeRemove,
-                                      List<String> expectedRelatedUrnsAfterRemove) throws Exception {
+                                      List<String> expectedOutgoingRelatedUrnsBeforeRemove,
+                                      List<String> expectedIncomingRelatedUrnsBeforeRemove,
+                                      List<String> expectedOutgoingRelatedUrnsAfterRemove,
+                                      List<String> expectedIncomingRelatedUrnsAfterRemove) throws Exception {
     GraphService service = getPopulatedGraphService();
 
     List<String> allOtherRelationTypes =
@@ -579,18 +619,25 @@ abstract public class GraphServiceTestBase {
                     .collect(Collectors.toList());
     assertTrue(allOtherRelationTypes.size() > 0);
 
-    List<String> actualRelatedUrnsBeforeRemove = service.findRelatedUrns(
+    List<String> actualOutgoingRelatedUrnsBeforeRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
-            relationTypes, undirectedRelationships,
+            relationTypes, outgoingRelationships,
             0, 10);
-    assertEqualsAsSets(actualRelatedUrnsBeforeRemove, expectedRelatedUrnsBeforeRemove);
+    List<String> actualIncomingRelatedUrnsBeforeRemove = service.findRelatedUrns(
+            anyType, newFilter("urn", nodeToRemoveFrom.toString()),
+            anyType, EMPTY_FILTER,
+            relationTypes, incomingRelationships,
+            0, 10);
+    assertEqualsAsSets(actualOutgoingRelatedUrnsBeforeRemove, expectedOutgoingRelatedUrnsBeforeRemove);
+    assertEqualsAsSets(actualIncomingRelatedUrnsBeforeRemove, expectedIncomingRelatedUrnsBeforeRemove);
+
+    // we expect these do not change
     List<String> relatedUrnsOfOtherRelationTypesBeforeRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
             allOtherRelationTypes, undirectedRelationships,
             0, 10);
-    assertTrue(relatedUrnsOfOtherRelationTypesBeforeRemove.size() > 0);
 
     service.removeEdgesFromNode(
             nodeToRemoveFrom,
@@ -599,25 +646,33 @@ abstract public class GraphServiceTestBase {
     );
     syncAfterWrite();
 
-    List<String> actualRelatedUrnsAfterRemove = service.findRelatedUrns(
+    List<String> actualOutgoingRelatedUrnsAfterRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
-            relationTypes, undirectedRelationships,
+            relationTypes, outgoingRelationships,
             0, 10);
-    assertEqualsAsSets(actualRelatedUrnsAfterRemove, expectedRelatedUrnsAfterRemove);
+    List<String> actualIncomingRelatedUrnsAfterRemove = service.findRelatedUrns(
+            anyType, newFilter("urn", nodeToRemoveFrom.toString()),
+            anyType, EMPTY_FILTER,
+            relationTypes, incomingRelationships,
+            0, 10);
+    assertEqualsAsSets(actualOutgoingRelatedUrnsAfterRemove, expectedOutgoingRelatedUrnsAfterRemove);
+    assertEqualsAsSets(actualIncomingRelatedUrnsAfterRemove, expectedIncomingRelatedUrnsAfterRemove);
+
+    // assert these did not change
     List<String> relatedUrnsOfOtherRelationTypesAfterRemove = service.findRelatedUrns(
             anyType, newFilter("urn", nodeToRemoveFrom.toString()),
             anyType, EMPTY_FILTER,
             allOtherRelationTypes, undirectedRelationships,
             0, 10);
-    assertEqualsAsSets(actualRelatedUrnsAfterRemove, actualRelatedUrnsBeforeRemove);
+    assertEqualsAsSets(relatedUrnsOfOtherRelationTypesAfterRemove, relatedUrnsOfOtherRelationTypesBeforeRemove);
   }
 
   @Test
   public void testRemoveNode() throws Exception {
     GraphService service = getPopulatedGraphService();
 
-    // assert the initial graph: check all nodes related to upstreamOf and nextVersionOf edges
+    // assert the initial graph: check all nodes related to DownstreamOf and hasOwner edges
     assertEqualsAsSets(
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
@@ -640,7 +695,7 @@ abstract public class GraphServiceTestBase {
     service.removeNode(datasetTwoUrn);
     syncAfterWrite();
 
-    // assert the modified graph: check all nodes related to upstreamOf and nextVersionOf edges again
+    // assert the modified graph: check all nodes related to DownstreamOf and hasOwner edges
     assertEqualsAsSets(
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
@@ -648,7 +703,7 @@ abstract public class GraphServiceTestBase {
                     Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
             ),
-            Arrays.asList(datasetOneUrnString)
+            Collections.emptyList()
     );
     assertEqualsAsSets(
             service.findRelatedUrns(
@@ -666,46 +721,64 @@ abstract public class GraphServiceTestBase {
     GraphService service = getPopulatedGraphService();
 
     // assert the initial graph: check all nodes related to upstreamOf and nextVersionOf edges
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
-                    datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
+                    datasetType, EMPTY_FILTER,
                     Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
-            ).toArray(),
-            Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString).toArray()
+            ),
+            Arrays.asList(datasetOneUrnString, datasetTwoUrnString, datasetThreeUrnString, datasetFourUrnString)
     );
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
-                    userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
                     Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
-            ).toArray(),
-            Arrays.asList(userOneUrnString, userTwoUrnString).toArray()
+            ),
+            Arrays.asList(userOneUrnString, userTwoUrnString)
+    );
+    assertEqualsAsSets(
+            service.findRelatedUrns(
+                    anyType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
+                    Arrays.asList(knowsUser), undirectedRelationships,
+                    0, 10
+            ),
+            Arrays.asList(userOneUrnString, userTwoUrnString)
     );
 
     service.clear();
     syncAfterWrite();
 
     // assert the modified graph: check all nodes related to upstreamOf and nextVersionOf edges again
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
                     datasetType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
                     Arrays.asList(downstreamOf), undirectedRelationships,
                     0, 10
-            ).toArray(),
-            new Object[0]
+            ),
+            Collections.emptyList()
     );
-    assertEqualsNoOrder(
+    assertEqualsAsSets(
             service.findRelatedUrns(
                     userType, EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
                     Arrays.asList(hasOwner), undirectedRelationships,
                     0, 10
-            ).toArray(),
-            new Object[0]
+            ),
+            Collections.emptyList()
+    );
+    assertEqualsAsSets(
+            service.findRelatedUrns(
+                    anyType, EMPTY_FILTER,
+                    userType, EMPTY_FILTER,
+                    Arrays.asList(knowsUser), undirectedRelationships,
+                    0, 10
+            ),
+            Collections.emptyList()
     );
   }
 
