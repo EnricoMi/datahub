@@ -1,11 +1,8 @@
 #!/bin/sh
 
-# Add default URI (http) scheme to NEO4J_HOST and DGRAPH_HOST if missing
-if [[ -n "$NEO4J_HOST" && $NEO4J_HOST != *"://"* ]] ; then
+# Add default URI (http) scheme to NEO4J_HOST if missing
+if test -n "$NEO4J_HOST" && ! echo $NEO4J_HOST | grep -q "://" ; then
     NEO4J_HOST="http://$NEO4J_HOST"
-fi
-if [[ -n "$DGRAPH_HOST" && $DGRAPH_HOST != *"://"* ]] ; then
-    DGRAPH_HOST="http://$DGRAPH_HOST"
 fi
 
 # Add elasticsearch host url
@@ -42,10 +39,13 @@ if [[ $GRAPH_SERVICE_IMPL == neo4j ]]; then
   WAIT_FOR_GRAPH_SERVICE=" -wait $NEO4J_HOST "
 elif [[ $GRAPH_SERVICE_IMPL == dgraph ]]; then
   if [[ -z "$DGRAPH_HOST" ]]; then
-    echo "GRAPH_SERVICE_IMPL set to DGRAPH but no DGRAPH_HOST set"
+    echo "GRAPH_SERVICE_IMPL set to dgraph but no DGRAPH_HOST set"
     exit 1
   fi
-  WAIT_FOR_GRAPH_SERVICE=" -wait $DGRAPH_HOST "
+  if ! echo $DGRAPH_HOST | grep -q ":" ; then
+    DGRAPH_HOST="$DGRAPH_HOST:9080"
+  fi
+  WAIT_FOR_GRAPH_SERVICE=" -wait tcp://$DGRAPH_HOST "
 fi
 
 OTEL_AGENT=""
