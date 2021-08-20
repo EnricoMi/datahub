@@ -49,15 +49,13 @@ services:
     - EBEAN_DATASOURCE_USERNAME=datahub
     - EBEAN_DATASOURCE_PASSWORD=datahub
     - EBEAN_DATASOURCE_HOST=mysql:3306
-    - EBEAN_DATASOURCE_URL=jdbc:mysql://mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2
+    - EBEAN_DATASOURCE_URL=jdbc:mysql://mysql:3306/datahub?verifyServerCertificate=false&useSSL=true&useUnicode=yes&characterEncoding=UTF-8
     - EBEAN_DATASOURCE_DRIVER=com.mysql.jdbc.Driver
     - KAFKA_BOOTSTRAP_SERVER=broker:29092
     - KAFKA_SCHEMAREGISTRY_URL=http://schema-registry:8081
     - ELASTICSEARCH_HOST=elasticsearch
     - ELASTICSEARCH_PORT=9200
-    - GRAPH_SERVICE_IMPL=dgraph
-    - DGRAPH_HOST=dgraph
-    - DGRAPH_SECURITY=plain
+    - GRAPH_SERVICE_IMPL=elasticsearch
     - JAVA_OPTS=-Xms1g -Xmx1g
     - ENTITY_REGISTRY_CONFIG_PATH=/datahub/datahub-gms/resources/entity-registry.yml
     - MAE_CONSUMER_ENABLED=true
@@ -66,17 +64,6 @@ services:
     image: linkedin/datahub-gms:${DATAHUB_VERSION:-head}
     ports:
     - 8080:8080
-  dgraph:
-    container_name: dgraph
-    environment:
-    - DGRAPH_SECURITY=plain
-    hostname: dgraph
-    image: dgraph/standalone:v21.03.1
-    ports:
-    - 8082:8080
-    - 9080:9080
-    volumes:
-    - dgraphdata:/dgraph
   elasticsearch:
     container_name: elasticsearch
     environment:
@@ -118,7 +105,7 @@ services:
     hostname: kafka-setup
     image: linkedin/datahub-kafka-setup:${DATAHUB_VERSION:-head}
   mysql:
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     container_name: mysql
     environment:
     - MYSQL_DATABASE=datahub
@@ -169,7 +156,6 @@ services:
     - zkdata:/var/opt/zookeeper
 version: '2.3'
 volumes:
-  dgraphdata: null
   esdata: null
   mysqldata: null
   zkdata: null
