@@ -29,7 +29,6 @@ import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import static com.linkedin.metadata.ElasticSearchTestUtils.syncAfterWrite;
@@ -51,22 +50,21 @@ public class SearchServiceTest {
   private static final int HTTP_PORT = 9200;
   private static final String ENTITY_NAME = "testEntity";
 
-  @BeforeTest
-  public void setup() {
-    _entityRegistry = new SnapshotEntityRegistry(new Snapshot());
-    _indexConvention = new IndexConventionImpl(null);
-    _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
-    _settingsBuilder = new SettingsBuilder(Collections.emptyList());
-    _elasticsearchContainer.start();
-    _searchClient = buildRestClient();
-    _elasticSearchService = buildEntitySearchService();
-    _elasticSearchService.configure();
-    _cacheManager = new ConcurrentMapCacheManager();
-    _searchService = new SearchService(_entityRegistry, _elasticSearchService, new SimpleRanker(), _cacheManager, 100);
-  }
-
   @BeforeMethod
-  public void wipe() throws Exception {
+  public synchronized void setup() throws Exception {
+    if (_elasticsearchContainer == null) {
+      _entityRegistry = new SnapshotEntityRegistry(new Snapshot());
+      _indexConvention = new IndexConventionImpl(null);
+      _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
+      _settingsBuilder = new SettingsBuilder(Collections.emptyList());
+      _elasticsearchContainer.start();
+      _searchClient = buildRestClient();
+      _elasticSearchService = buildEntitySearchService();
+      _elasticSearchService.configure();
+      _cacheManager = new ConcurrentMapCacheManager();
+      _searchService = new SearchService(_entityRegistry, _elasticSearchService, new SimpleRanker(), _cacheManager, 100);
+    }
+
     _elasticSearchService.clear();
     syncAfterWrite(_searchClient);
   }
@@ -100,7 +98,9 @@ public class SearchServiceTest {
 
   @AfterTest
   public void tearDown() {
-    _elasticsearchContainer.stop();
+    if (_elasticsearchContainer != null) {
+      _elasticsearchContainer.stop();
+    }
   }
 
   @Test

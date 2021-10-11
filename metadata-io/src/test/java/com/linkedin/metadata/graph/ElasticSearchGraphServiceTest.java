@@ -19,7 +19,6 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testng.SkipException;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
@@ -42,17 +41,16 @@ public class ElasticSearchGraphServiceTest extends GraphServiceTestBase {
   private static final String IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:7.9.3";
   private static final int HTTP_PORT = 9200;
 
-  @BeforeTest
-  public void setup() {
-    _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
-    _elasticsearchContainer.start();
-    _searchClient = buildRestClient();
-    _client = buildService();
-    _client.configure();
-  }
-
   @BeforeMethod
-  public void wipe() throws Exception {
+  public synchronized void setup() throws Exception {
+    if (_elasticsearchContainer == null) {
+      _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
+      _elasticsearchContainer.start();
+      _searchClient = buildRestClient();
+      _client = buildService();
+      _client.configure();
+    }
+
     _client.clear();
     syncAfterWrite();
   }
@@ -79,7 +77,9 @@ public class ElasticSearchGraphServiceTest extends GraphServiceTestBase {
 
   @AfterTest
   public void tearDown() {
+    if (_elasticsearchContainer != null) {
     _elasticsearchContainer.stop();
+    }
   }
 
   @Override

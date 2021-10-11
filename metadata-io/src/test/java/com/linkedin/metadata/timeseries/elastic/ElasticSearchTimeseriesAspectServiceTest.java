@@ -46,7 +46,7 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static com.linkedin.metadata.ElasticSearchTestUtils.*;
@@ -82,18 +82,20 @@ public class ElasticSearchTimeseriesAspectServiceTest {
    * Basic setup and teardown
    */
 
-  @BeforeTest
-  public void setup() {
-    _entityRegistry = new ConfigEntityRegistry(new DataSchemaFactory("com.datahub.test"),
-        TestEntityProfile.class.getClassLoader().getResourceAsStream("test-entity-registry.yml"));
-    _indexConvention = new IndexConventionImpl(null);
-    _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
-    _elasticsearchContainer.start();
-    _searchClient = buildRestClient();
-    _elasticSearchTimeseriesAspectService = buildService();
-    _elasticSearchTimeseriesAspectService.configure();
-    EntitySpec entitySpec = _entityRegistry.getEntitySpec(ENTITY_NAME);
-    _aspectSpec = entitySpec.getAspectSpec(ASPECT_NAME);
+  @BeforeMethod
+  public synchronized void setup() {
+    if (_elasticsearchContainer == null) {
+      _entityRegistry = new ConfigEntityRegistry(new DataSchemaFactory("com.datahub.test"),
+              TestEntityProfile.class.getClassLoader().getResourceAsStream("test-entity-registry.yml"));
+      _indexConvention = new IndexConventionImpl(null);
+      _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
+      _elasticsearchContainer.start();
+      _searchClient = buildRestClient();
+      _elasticSearchTimeseriesAspectService = buildService();
+      _elasticSearchTimeseriesAspectService.configure();
+      EntitySpec entitySpec = _entityRegistry.getEntitySpec(ENTITY_NAME);
+      _aspectSpec = entitySpec.getAspectSpec(ASPECT_NAME);
+    }
   }
 
   @Nonnull
@@ -117,7 +119,9 @@ public class ElasticSearchTimeseriesAspectServiceTest {
 
   @AfterTest
   public void tearDown() {
-    _elasticsearchContainer.stop();
+    if (_elasticsearchContainer != null) {
+      _elasticsearchContainer.stop();
+    }
   }
 
   /*

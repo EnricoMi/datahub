@@ -26,7 +26,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
@@ -46,20 +45,19 @@ public class ElasticSearchServiceTest {
   private static final int HTTP_PORT = 9200;
   private static final String ENTITY_NAME = "testEntity";
 
-  @BeforeTest
-  public void setup() {
-    _entityRegistry = new SnapshotEntityRegistry(new Snapshot());
-    _indexConvention = new IndexConventionImpl(null);
-    _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
-    _settingsBuilder = new SettingsBuilder(Collections.emptyList());
-    _elasticsearchContainer.start();
-    _searchClient = buildRestClient();
-    _elasticSearchService = buildService();
-    _elasticSearchService.configure();
-  }
-
   @BeforeMethod
-  public void wipe() throws Exception {
+  public synchronized void setup() throws Exception {
+    if (_elasticsearchContainer == null) {
+      _entityRegistry = new SnapshotEntityRegistry(new Snapshot());
+      _indexConvention = new IndexConventionImpl(null);
+      _elasticsearchContainer = new ElasticsearchContainer(IMAGE_NAME);
+      _settingsBuilder = new SettingsBuilder(Collections.emptyList());
+      _elasticsearchContainer.start();
+      _searchClient = buildRestClient();
+      _elasticSearchService = buildService();
+      _elasticSearchService.configure();
+    }
+
     _elasticSearchService.clear();
     syncAfterWrite(_searchClient);
   }
@@ -88,7 +86,9 @@ public class ElasticSearchServiceTest {
 
   @AfterTest
   public void tearDown() {
-    _elasticsearchContainer.stop();
+    if (_elasticsearchContainer != null) {
+      _elasticsearchContainer.stop();
+    }
   }
 
   @Test
