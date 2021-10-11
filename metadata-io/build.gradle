@@ -44,6 +44,10 @@ dependencies {
   testCompile project(':test-models')
 }
 
+test {
+  maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+}
+
 tasks.withType(Test) {
     enableAssertions = false
 }
