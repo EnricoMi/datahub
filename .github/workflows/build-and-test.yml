@@ -17,8 +17,14 @@ on:
 
 jobs:
   build:
+    name: "build (#${{ matrix.high-digit}}${{ matrix.low-digit}})"
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        high-digit: [0]
+        low-digit: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK 1.8
@@ -29,12 +35,15 @@ jobs:
         with:
           python-version: "3.6"
       - name: Gradle build (and test)
-        run: ./gradlew build -x :metadata-io:test -x :metadata-ingestion:build -x :metadata-ingestion:check -x docs-website:build
+        run: |
+          ./gradlew --info build -x :metadata-ingestion:build -x :metadata-ingestion:check -x docs-website:build -x datahub-frontend
+          ./gradlew --info build -x :metadata-ingestion:build -x :metadata-ingestion:check -x docs-website:build
       - uses: actions/upload-artifact@v2
         if: always()
         with:
           name: Test Results
           path: "**/build/reports/tests/test/**"
+          retention-days: 5
       - name: Ensure codegen is updated
         run: |
           if output=$(git status --porcelain) && [ ! -z "$output" ]; then
