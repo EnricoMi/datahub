@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        high-digit: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        high-digit: [0]
         low-digit: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     steps:
       - uses: actions/checkout@v2
@@ -36,7 +36,7 @@ jobs:
           python-version: "3.6"
       - name: Gradle build (and test)
         run: |
-          ./gradlew --info build -x :metadata-ingestion:build -x :metadata-ingestion:check -x docs-website:build -x datahub-web-react:yarnBuild -x datahub-frontend:unzipAssets
+          ./gradlew --info build -x :metadata-ingestion:build -x :metadata-ingestion:check -x docs-website:build -x datahub-frontend
           ./gradlew --info build -x :metadata-ingestion:build -x :metadata-ingestion:check -x docs-website:build
       - uses: actions/upload-artifact@v2
         if: always()
