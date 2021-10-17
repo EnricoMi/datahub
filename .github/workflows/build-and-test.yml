@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        high-digit: [0]
+        high-digit: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         low-digit: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     steps:
       - uses: actions/checkout@v2
