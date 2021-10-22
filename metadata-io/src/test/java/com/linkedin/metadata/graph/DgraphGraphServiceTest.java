@@ -107,6 +107,7 @@ public class DgraphGraphServiceTest extends GraphServiceTestBase {
     protected void syncAfterWrite() { }
 
     @Override
+    @SuppressWarnings("MalformedDataProvider")
     @Test(dataProvider = "FindRelatedEntitiesSourceTypeTests")
     public void testFindRelatedEntitiesSourceType(String datasetType,
                                                   List<String> relationshipTypes,
@@ -120,6 +121,7 @@ public class DgraphGraphServiceTest extends GraphServiceTestBase {
     }
 
     @Override
+    @SuppressWarnings("MalformedDataProvider")
     @Test(dataProvider = "FindRelatedEntitiesDestinationTypeTests")
     public void testFindRelatedEntitiesDestinationType(String datasetType,
                                                        List<String> relationshipTypes,
